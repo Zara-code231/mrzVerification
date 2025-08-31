@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Validateur pédagogique MRZ (TD3 / TD1) – </title>
+<style>
+  body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;max-width:860px;margin:24px auto;padding:0 12px;line-height:1.45}
+  h1{font-size:1.5rem;margin:0 0 .25rem}
+  .note{font-size:.9rem;color:#555;margin:.25rem 0 1rem}
+  textarea{width:100%;min-height:88px;font-family:ui-monospace,Consolas,monospace}
+  .row{display:flex;gap:12px;flex-wrap:wrap;margin:.5rem 0}
+  .card{border:1px solid #ddd;border-radius:12px;padding:12px}
+  .ok{color:green;font-weight:600}
+  .bad{color:#b00020;font-weight:600}
+  code{background:#f6f6f6;padding:.1rem .3rem;border-radius:6px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:720px){.grid{grid-template-columns:1fr}}
+
+  /* Bannière pub */
+  .pub-banner{
+    position:fixed;bottom:0;left:0;right:0;
+    background:#222;color:#fff;padding:10px;text-align:center;
+    font-size:.95rem;z-index:1000;
+  }
+  .pub-banner a{color:#4da6ff;font-weight:bold;text-decoration:none}
+
+  /* Popup */
+  .popup-overlay{
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(0,0,0,0.7);display:none;
+    justify-content:center;align-items:center;z-index:2000;
+  }
+  .popup{
+    background:#fff;border-radius:12px;padding:20px;max-width:400px;
+    text-align:center;box-shadow:0 4px 10px rgba(0,0,0,0.4);
+  }
+  .popup img{max-width:100px;margin:10px auto;display:block}
+  .popup h2{margin:10px 0;color:#222}
+  .popup p{margin:10px 0;font-size:.95rem}
+  .popup a{display:inline-block;margin-top:12px;padding:8px 16px;
+    background:#0078ff;color:#fff;border-radius:8px;text-decoration:none}
+  .close-btn{
+    margin-top:12px;background:#aaa;color:#fff;border:none;
+    padding:6px 12px;border-radius:6px;cursor:pointer
+  }
+</style>
+</head>
+<body>
+  <h1>Validateur pédagogique MRZ</h1>
+  <div class="note">Outils pour valider votre MRZ – usage éducatif uniquement.</div>
+
+  <div class="card">
+    <label for="mrz">MRZ</label>
+    <textarea id="mrz" placeholder="Ex. TD3 (passeport)&#10;P<CANBROSSEAU<<SIMON<MAXANCE<<<<<<<<<<<<<<<<<<&#10;GA324268<6CAN9404239M3103205<<<<<<<<<<<<<<06"></textarea>
+    <div class="row">
+      <button id="btnValidate">Vérifier</button>
+      <button id="btnClear">Effacer</button>
+    </div>
+    <div id="status" class="note"></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Résumé</h3>
+      <div id="summary">—</div>
+    </div>
+    <div class="card">
+      <h3>Checksums</h3>
+      <div id="checks">—</div>
+    </div>
+  </div>
+
+  <!-- Popup publicité -->
+  <div class="popup-overlay" id="popupAd">
+    <div class="popup">
+      <img src="téléchargement.jpeg" alt="Logo 1">
+      <img src="téléchargement (1).jpeg" alt="Logo 2">
+      <h2>FORMATION OUTLIER SY MICROWORKER</h2>
+      <p>Disponible chez JL SIMON + TEMPLATE PSD +1000 PAYS<br>Déjà +100 clients satisfaits ✅</p>
+      <a href="https://www.facebook.com/jl.simon.2025" target="_blank">Voir l'offre</a><br>
+      <button class="close-btn" id="closeAd">Fermer</button>
+    </div>
+  </div>
+
+  <!-- Bannière en bas -->
+  <div class="pub-banner">
+    📢 <strong>FORMATION OUTLIER SY MICROWORKER</strong> dispo chez 
+    <a href="https://www.facebook.com/jl.simon.2025" target="_blank">JL SIMON</a> +1000 PAYS, déjà +100 clients ✅
+  </div>
+
+<script>
+/* ======= MRZ LOGIC (inchangé) ======= */
+const weights=[7,3,1];const val=ch=>{if(ch==='<')return 0;if(ch>='0'&&ch<='9')return ch.charCodeAt(0)-48;if(ch>='A'&&ch<='Z')return ch.charCodeAt(0)-55;return 0;};
+const checkDigit=str=>{let sum=0;for(let i=0;i<str.length;i++)sum+=val(str[i])*weights[i%3];return String(sum%10);};
+function parseTD3(lines){const l1=lines[0].padEnd(44,'<').slice(0,44);const l2=lines[1].padEnd(44,'<').slice(0,44);
+const docType=l1.slice(0,1);const issuer=l1.slice(2,5);const names=l1.slice(5).split('<<');const surname=names[0].replace(/<+/g,' ').trim();const given=(names[1]||'').replace(/<+/g,' ').trim();
+const passportNumber=l2.slice(0,9);const passportCD=l2.slice(9,10);const nationality=l2.slice(10,13);const dob=l2.slice(13,19);const dobCD=l2.slice(19,20);const sex=l2.slice(20,21);const exp=l2.slice(21,27);const expCD=l2.slice(27,28);const opt=l2.slice(28,42);const optCD=l2.slice(42,43);const finalCD=l2.slice(43,44);
+const composite=passportNumber+passportCD+nationality+dob+dobCD+sex+exp+expCD+opt+optCD;
+return{format:'TD3',fields:{docType,issuer,surname,given,passportNumber,nationality,dob,sex,exp,opt},cds:{passport:{calc:checkDigit(passportNumber),got:passportCD},dob:{calc:checkDigit(dob),got:dobCD},exp:{calc:checkDigit(exp),got:expCD},opt:{calc:checkDigit(opt),got:optCD},final:{calc:checkDigit(composite),got:finalCD}}};}
+function parseTD1(lines){const l1=lines[0].padEnd(30,'<').slice(0,30);const l2=lines[1].padEnd(30,'<').slice(0,30);const l3=lines[2].padEnd(30,'<').slice(0,30);
+const docType=l1.slice(0,1);const issuer=l1.slice(2,5);const idNumber=l1.slice(5,14);const idCD=l1.slice(14,15);const opt1=l1.slice(15,30);const dob=l2.slice(0,6);const dobCD=l2.slice(6,7);const sex=l2.slice(7,8);const exp=l2.slice(8,14);const expCD=l2.slice(14,15);const nationality=l2.slice(15,18);const opt2=l2.slice(18,29);const opt2CD=l2.slice(29,30);
+const names=l3.split('<<');const surname=names[0].replace(/<+/g,' ').trim();const given=(names[1]||'').replace(/<+/g,' ').trim();const composite=idNumber+idCD+dob+dobCD+exp+expCD+opt2+opt2CD;
+return{format:'TD1',fields:{docType,issuer,surname,given,idNumber,nationality,dob,sex,exp,opt1,opt2},cds:{idNumber:{calc:checkDigit(idNumber),got:idCD},dob:{calc:checkDigit(dob),got:dobCD},exp:{calc:checkDigit(exp),got:expCD},opt2:{calc:checkDigit(opt2),got:opt2CD},final:{calc:checkDigit(composite),got:l1.slice(29,30)}}};}
+function formatDateYYMMDD(s){const yy=s.slice(0,2),mm=s.slice(2,4),dd=s.slice(4,6);return`20${yy}-${mm}-${dd}`;}
+function validate(){const raw=document.getElementById('mrz').value.trim().toUpperCase().replace(/[^\nA-Z0-9<]/g,'');const lines=raw.split(/\n+/);const status=document.getElementById('status');const summary=document.getElementById('summary');const checks=document.getElementById('checks');
+if(!(lines.length===2||lines.length===3)){status.innerHTML='<span class="bad">Entrer 2 lignes (TD3) ou 3 lignes (TD1).</span>';summary.textContent='—';checks.textContent='—';return;}
+let parsed;try{parsed=(lines.length===2)?parseTD3(lines):parseTD1(lines);}catch(e){status.innerHTML='<span class="bad">Erreur de parsing.</span>';return;}
+const cds=parsed.cds;const allOk=Object.values(cds).every(x=>x.calc===x.got);status.innerHTML=allOk?'<span class="ok">MRZ cohérente (checksums OK). Usage éducatif uniquement.</span>':'<span class="bad">Incohérences détectées (voir détails ci-dessous).</span>';
+const f=parsed.fields;const name=(f.surname||'')+(f.given?(', '+f.given):'');const id=f.passportNumber||f.idNumber||'—';
+summary.innerHTML=`<div><strong>Format</strong> : ${parsed.format}</div><div><strong>État émetteur</strong> : <code>${f.issuer||'—'}</code></div><div><strong>Nationalité</strong> : <code>${f.nationality||'—'}</code></div><div><strong>Nom</strong> : ${name||'—'}</div><div><strong>Identifiant</strong> : <code>${id}</code></div><div><strong>Date naissance</strong> : <code>${f.dob||'—'}</code> (~ ${f.dob?formatDateYYMMDD(f.dob):'—'})</div><div><strong>Sexe</strong> : <code>${f.sex||'—'}</code></div><div><strong>Expiration</strong> : <code>${f.exp||'—'}</code> (~ ${f.exp?formatDateYYMMDD(f.exp):'—'})</div>`;
+const row=(label,obj)=>`<div>${label} : attendu <code>${obj.calc}</code> / lu <code>${obj.got}</code> ${obj.calc===obj.got?'<span class="ok">OK</span>':'<span class="bad">NOK</span>'}</div>`;
+checks.innerHTML=[cds.passport?row('N° document',cds.passport):'',cds.idNumber?row('N° document (TD1)',cds.idNumber):'',row('Date de naissance',cds.dob),row('Date d’expiration',cds.exp),cds.opt?row('Zone optionnelle',cds.opt):(cds.opt2?row('Zone optionnelle (TD1 L2)',cds.opt2):''),row('Clé finale',cds.final),].join('');}
+document.getElementById('btnClear').addEventListener('click',()=>{document.getElementById('mrz').value='';document.getElementById('status').textContent='';document.getElementById('summary').textContent='—';document.getElementById('checks').textContent='—';});
+
+/* ======= PUB LOGIC ======= */
+let adShown=false;
+document.getElementById('btnValidate').addEventListener('click',()=>{
+  if(!adShown){
+    document.getElementById('popupAd').style.display='flex';
+    adShown=true;
+  }else{
+    validate();
+  }
+});
+document.getElementById('closeAd').addEventListener('click',()=>{
+  document.getElementById('popupAd').style.display='none';
+});
+let lastMrz = ""; // stocke le dernier contenu validé
+
+function validateIfChanged(){
+  const currentMrz = document.getElementById('mrz').value.trim();
+  if(currentMrz === lastMrz){
+    alert("Le contenu n’a pas changé depuis la dernière vérification.");
+    return; // on ne relance pas
+  }
+  lastMrz = currentMrz;
+  validate();
+}
+</script>
+</body>
+</html>
